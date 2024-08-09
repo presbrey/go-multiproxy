@@ -250,10 +250,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 
-	if lastErr != nil {
-		return nil, fmt.Errorf("all proxy servers failed, last error: %v", lastErr)
-	}
-	return nil, errors.New("all proxy servers are unavailable")
+	return nil, fmt.Errorf("all proxy servers failed, last error: %v", lastErr)
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
