@@ -23,19 +23,32 @@ type ProxyAuth struct {
 }
 
 type Config struct {
-	ProxyURLs          []string
-	ProxyAuth          map[string]ProxyAuth
-	CookieTimeout      time.Duration
-	CookieOptions      *cookiejar.Options
-	DialTimeout        time.Duration
-	BackoffTime        time.Duration
-	RequestTimeout     time.Duration
-	RetryAttempts      int
-	RetryDelay         time.Duration
-	DefaultUserAgent   string
-	ProxyUserAgents    map[string]string
-	RateLimits         map[string]time.Duration
-	ProxyRotateCount   int
+	// Proxy configuration
+	ProxyURLs        []string
+	ProxyAuth        map[string]ProxyAuth
+	ProxyRotateCount int
+	ProxyUserAgents  map[string]string
+
+	// Timeouts and delays
+	BackoffTime    time.Duration
+	DialTimeout    time.Duration
+	RequestTimeout time.Duration
+	RetryDelay     time.Duration
+
+	// Cookie handling
+	CookieOptions *cookiejar.Options
+	CookieTimeout time.Duration
+
+	// User-Agent configuration
+	DefaultUserAgent string
+
+	// Rate limiting
+	RateLimits map[string]time.Duration
+
+	// Retry configuration
+	RetryAttempts int
+
+	// TLS configuration
 	InsecureSkipVerify bool
 }
 

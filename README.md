@@ -84,15 +84,24 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
 
 - `ProxyURLs`: List of proxy URLs to use
 - `ProxyAuth`: Map of proxy URLs to their respective authentication credentials
-- `CookieTimeout`: Duration for which cookies are valid
-- `CookieOptions`: Options for configuring the cookie jar (see `http.cookiejar.Options`)
-- `DialTimeout`: Timeout for establishing a connection to a proxy
-- `BackoffTime`: Time to wait before retrying a failed proxy
-- `RequestTimeout`: Timeout for the entire request (including dialing, writing request, and reading response)
-- `RetryAttempts`: Number of times to retry a failed request
-- `RetryDelay`: Delay between retry attempts
-- `UserAgents`: List of User-Agent strings to rotate through
 - `ProxyRotateCount`: Number of requests after which to rotate to the next proxy
+- `ProxyUserAgents`: Map of proxy URLs to their respective User-Agent strings
+
+- `BackoffTime`: Time to wait before retrying a failed proxy
+- `DialTimeout`: Timeout for establishing a connection to a proxy
+- `RequestTimeout`: Timeout for the entire request (including dialing, writing request, and reading response)
+- `RetryDelay`: Delay between retry attempts
+
+- `CookieOptions`: Options for configuring the cookie jar (see `http.cookiejar.Options`)
+- `CookieTimeout`: Duration for which cookies are valid
+
+- `DefaultUserAgent`: Default User-Agent string to use if not specified in `ProxyUserAgents`
+
+- `RateLimits`: Map of proxy URLs to their respective rate limit durations
+
+- `RetryAttempts`: Number of times to retry a failed request
+
+- `InsecureSkipVerify`: Whether to skip TLS certificate verification
 
 ## Testing
 
