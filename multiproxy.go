@@ -36,7 +36,8 @@ type Config struct {
 	RequestTimeout     time.Duration
 	RetryAttempts      int
 	RetryDelay         time.Duration
-	UserAgents         []string
+	DefaultUserAgent   string
+	ProxyUserAgents    map[string]string
 	RateLimits         map[string]time.Duration
 	ProxyRotateCount   int
 	InsecureSkipVerify bool
@@ -67,7 +68,8 @@ type Client struct {
 	requestTimeout   time.Duration
 	retryAttempts    int
 	retryDelay       time.Duration
-	userAgents       []string
+	defaultUserAgent string
+	proxyUserAgents  map[string]string
 	rateLimits       map[string]time.Duration
 	proxyRotateCount int
 }
@@ -87,7 +89,8 @@ func NewClient(config Config) (*Client, error) {
 		requestTimeout:   config.RequestTimeout,
 		retryAttempts:    config.RetryAttempts,
 		retryDelay:       config.RetryDelay,
-		userAgents:       config.UserAgents,
+		defaultUserAgent: config.DefaultUserAgent,
+		proxyUserAgents:  config.ProxyUserAgents,
 		rateLimits:       config.RateLimits,
 		proxyRotateCount: config.ProxyRotateCount,
 	}
@@ -208,9 +211,11 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 			}
 		}
 
-		// Set a random User-Agent if available
-		if len(c.userAgents) > 0 {
-			req.Header.Set("User-Agent", c.userAgents[state.requestCount%len(c.userAgents)])
+		// Set User-Agent
+		if userAgent, ok := c.proxyUserAgents[c.servers[idx].Host]; ok {
+			req.Header.Set("User-Agent", userAgent)
+		} else if c.defaultUserAgent != "" {
+			req.Header.Set("User-Agent", c.defaultUserAgent)
 		}
 
 		// Set request timeout

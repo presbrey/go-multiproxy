@@ -18,9 +18,10 @@ func TestAllProxiesUnavailable(t *testing.T) {
 			"socks5://10.255.255.1:1080",
 			"socks5://10.255.255.2:1080",
 		},
-		DialTimeout:   1 * time.Second,
-		RetryAttempts: 1,
-		RetryDelay:    500 * time.Millisecond,
+		DialTimeout:      1 * time.Second,
+		DefaultUserAgent: "DefaultUserAgent/1.0",
+		RetryAttempts:    1,
+		RetryDelay:       500 * time.Millisecond,
 	}
 
 	client, err := NewClient(config)

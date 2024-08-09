@@ -214,12 +214,7 @@ func TestRetryMechanism(t *testing.T) {
 	assert.Equal(t, 0, client.states[1].failureCount)
 }
 
-func TestUserAgentRotation(t *testing.T) {
-	userAgents := []string{
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
-	}
-
+func TestUserAgentOverride(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, r.UserAgent())
 	}))
@@ -227,25 +222,37 @@ func TestUserAgentRotation(t *testing.T) {
 
 	proxy1, cleanup1 := setupSocks5Server(t, "", "")
 	defer cleanup1()
+	proxy2, cleanup2 := setupSocks5Server(t, "", "")
+	defer cleanup2()
 
 	config := Config{
-		ProxyURLs:   []string{"socks5://" + proxy1},
-		UserAgents:  userAgents,
-		DialTimeout: 5 * time.Second,
+		ProxyURLs:        []string{"socks5://" + proxy1, "socks5://" + proxy2},
+		DefaultUserAgent: "DefaultUserAgent/1.0",
+		ProxyUserAgents: map[string]string{
+			proxy1: "CustomUserAgent/1.0",
+		},
+		DialTimeout:      5 * time.Second,
+		ProxyRotateCount: 1, // Ensure we switch proxies after each request
 	}
 
 	client, err := NewClient(config)
 	assert.NoError(t, err)
 
-	for i := 0; i < 4; i++ {
-		resp, err := client.Get(testServer.URL)
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		resp.Body.Close()
+	// Test custom user agent for proxy1
+	resp, err := client.Get(testServer.URL)
+	assert.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, "CustomUserAgent/1.0", string(body))
 
-		assert.Equal(t, userAgents[i%2], string(body))
-	}
+	// Test default user agent for proxy2
+	resp, err = client.Get(testServer.URL)
+	assert.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, "DefaultUserAgent/1.0", string(body))
 }
 
 func TestRateLimiting(t *testing.T) {
