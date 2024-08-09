@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -17,10 +16,6 @@ import (
 	"golang.org/x/net/proxy"
 	"golang.org/x/sync/singleflight"
 )
-
-func init() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-}
 
 type ProxyAuth struct {
 	Username string
