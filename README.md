@@ -1,4 +1,4 @@
-# MultiProxy Client
+# MultiProxy Client for Go
 
 ## Overview
 
@@ -21,7 +21,7 @@ MultiProxy Client is a robust Go library designed to manage multiple HTTP/HTTPS 
 To use MultiProxy Client in your Go project, you can install it using `go get`:
 
 ```
-go get github.com/yourusername/multiproxy
+go get github.com/presbrey/go-multiproxy
 ```
 
 Replace `yourusername` with the actual GitHub username or organization where this project is hosted.
@@ -35,9 +35,10 @@ package main
 
 import (
     "fmt"
-    "github.com/yourusername/multiproxy"
     "net/http"
     "time"
+    
+    "github.com/presbrey/go-multiproxy"
 )
 
 func main() {
