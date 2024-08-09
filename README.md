@@ -59,6 +59,7 @@ func main() {
         RequestTimeout: 1 * time.Minute,
         RetryAttempts:  3,
         RetryDelay:     5 * time.Second,
+        ProxyRotateCount: 10,
     }
 
     client, err := multiproxy.NewClient(config)
@@ -89,6 +90,7 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
 - `RetryAttempts`: Number of times to retry a failed request
 - `RetryDelay`: Delay between retry attempts
 - `UserAgents`: List of User-Agent strings to rotate through
+- `ProxyRotateCount`: Number of requests after which to rotate to the next proxy
 
 ## Testing
 
