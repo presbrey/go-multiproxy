@@ -309,3 +309,57 @@ func TestProxyRotation(t *testing.T) {
 	assert.Equal(t, 4, client.states[0].requestCount)
 	assert.Equal(t, 2, client.states[1].requestCount)
 }
+
+func TestCookieTimeout(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("test_cookie")
+		if err == http.ErrNoCookie {
+			http.SetCookie(w, &http.Cookie{Name: "test_cookie", Value: "test_value"})
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if cookie.Value == "test_value" {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer testServer.Close()
+
+	proxy, cleanup := setupSocks5Server(t, "", "")
+	defer cleanup()
+
+	config := Config{
+		ProxyURLs: []string{
+			"socks5://" + proxy,
+		},
+		CookieTimeout: 2 * time.Second,
+		DialTimeout:   5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+
+	// First request should set the cookie
+	resp, err := client.Get(testServer.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	// Second request should use the existing cookie
+	resp, err = client.Get(testServer.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	// Wait for the cookie to expire
+	time.Sleep(3 * time.Second)
+
+	// Third request should set a new cookie
+	resp, err = client.Get(testServer.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	assert.Equal(t, 3, client.states[0].requestCount)
+}
