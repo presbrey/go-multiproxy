@@ -56,19 +56,8 @@ type Client struct {
 	mu         sync.Mutex
 	sf         singleflight.Group
 
-	config           Config
-	servers          []*url.URL
-	proxyAuth        map[string]ProxyAuth
-	cookieTimer      time.Duration
-	dialTimeout      time.Duration
-	backoffTime      time.Duration
-	requestTimeout   time.Duration
-	retryAttempts    int
-	retryDelay       time.Duration
-	defaultUserAgent string
-	proxyUserAgents  map[string]string
-	rateLimits       map[string]time.Duration
-	proxyRotateCount int
+	config  Config
+	servers []*url.URL
 }
 
 func NewClient(config Config) (*Client, error) {
@@ -77,20 +66,9 @@ func NewClient(config Config) (*Client, error) {
 	}
 
 	c := &Client{
-		config:           config,
-		servers:          make([]*url.URL, len(config.ProxyURLs)),
-		states:           make([]proxyState, len(config.ProxyURLs)),
-		proxyAuth:        config.ProxyAuth,
-		cookieTimer:      config.CookieTimeout,
-		dialTimeout:      config.DialTimeout,
-		backoffTime:      config.BackoffTime,
-		requestTimeout:   config.RequestTimeout,
-		retryAttempts:    config.RetryAttempts,
-		retryDelay:       config.RetryDelay,
-		defaultUserAgent: config.DefaultUserAgent,
-		proxyUserAgents:  config.ProxyUserAgents,
-		rateLimits:       config.RateLimits,
-		proxyRotateCount: config.ProxyRotateCount,
+		config:  config,
+		servers: make([]*url.URL, len(config.ProxyURLs)),
+		states:  make([]proxyState, len(config.ProxyURLs)),
 	}
 
 	for i, proxyURL := range config.ProxyURLs {
@@ -100,15 +78,15 @@ func NewClient(config Config) (*Client, error) {
 		}
 		c.servers[i] = serverURL
 
-		auth, hasAuth := c.proxyAuth[serverURL.Host]
+		auth, hasAuth := c.config.ProxyAuth[serverURL.Host]
 
 		var transport http.RoundTripper
 
 		dialer := &net.Dialer{
 			KeepAlive: 30 * time.Second,
 		}
-		if c.dialTimeout > 0 {
-			dialer.Timeout = c.dialTimeout
+		if c.config.DialTimeout > 0 {
+			dialer.Timeout = c.config.DialTimeout
 		}
 
 		if serverURL.Scheme == "socks5" {
@@ -193,7 +171,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 			continue
 		}
 
-		if c.cookieTimer > 0 && now.Sub(state.lastUsed) > c.cookieTimer {
+		if c.config.CookieTimeout > 0 && now.Sub(state.lastUsed) > c.config.CookieTimeout {
 			jar, err := cookiejar.New(c.config.CookieOptions)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create new cookie jar: %v", err)
@@ -203,17 +181,17 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		}
 
 		// Apply rate limiting
-		if limit, ok := c.rateLimits[c.servers[idx].Host]; ok {
+		if limit, ok := c.config.RateLimits[c.servers[idx].Host]; ok {
 			if now.Sub(state.lastRequestAt) < limit {
 				time.Sleep(limit - now.Sub(state.lastRequestAt))
 			}
 		}
 
 		// Set User-Agent
-		if userAgent, ok := c.proxyUserAgents[c.servers[idx].Host]; ok {
+		if userAgent, ok := c.config.ProxyUserAgents[c.servers[idx].Host]; ok {
 			req.Header.Set("User-Agent", userAgent)
-		} else if c.defaultUserAgent != "" {
-			req.Header.Set("User-Agent", c.defaultUserAgent)
+		} else if c.config.DefaultUserAgent != "" {
+			req.Header.Set("User-Agent", c.config.DefaultUserAgent)
 		}
 
 		// Set request timeout
@@ -221,8 +199,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 			ctx    context.Context
 			cancel context.CancelFunc
 		)
-		if c.dialTimeout > 0 || c.requestTimeout > 0 {
-			ctx, cancel = context.WithTimeout(req.Context(), c.dialTimeout+c.requestTimeout)
+		if c.config.DialTimeout > 0 || c.config.RequestTimeout > 0 {
+			ctx, cancel = context.WithTimeout(req.Context(), c.config.DialTimeout+c.config.RequestTimeout)
 		} else {
 			ctx, cancel = context.WithCancel(req.Context())
 		}
@@ -236,8 +214,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			lastErr = err
 			state.failureCount += 1
-			if c.backoffTime > 0 {
-				state.backoffUntil = now.Add(c.backoffTime)
+			if c.config.BackoffTime > 0 {
+				state.backoffUntil = now.Add(c.config.BackoffTime)
 			}
 			continue
 		}
@@ -246,7 +224,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		state.lastUsed = now
 
 		// Rotate proxy if needed
-		if c.proxyRotateCount > 0 && state.requestCount%c.proxyRotateCount == 0 {
+		if c.config.ProxyRotateCount > 0 && state.requestCount%c.config.ProxyRotateCount == 0 {
 			c.currentIdx = (c.currentIdx + 1) % len(c.states)
 		}
 
@@ -260,7 +238,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var finalErr error
 
-	for attempt := 0; attempt <= c.retryAttempts; attempt++ {
+	for attempt := 0; attempt <= c.config.RetryAttempts; attempt++ {
 		v, err, _ := c.sf.Do(req.URL.String(), func() (interface{}, error) {
 			return c.do(req)
 		})
@@ -272,8 +250,8 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		}
 		finalErr = err
 
-		if attempt < c.retryAttempts {
-			time.Sleep(c.retryDelay)
+		if attempt < c.config.RetryAttempts {
+			time.Sleep(c.config.RetryDelay)
 		}
 	}
 
