@@ -26,6 +26,7 @@ type Config struct {
 	ProxyURLs          []string
 	ProxyAuth          map[string]ProxyAuth
 	CookieTimeout      time.Duration
+	CookieOptions      *cookiejar.Options
 	DialTimeout        time.Duration
 	BackoffTime        time.Duration
 	RequestTimeout     time.Duration
@@ -151,9 +152,9 @@ func NewClient(config Config) (*Client, error) {
 			}
 		}
 
-		jar, err := cookiejar.New(nil)
+		jar, err := cookiejar.New(config.CookieOptions)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create cookie jar: %v", err)
 		}
 
 		c.states[i] = proxyState{
@@ -191,9 +192,9 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		}
 
 		if c.cookieTimer > 0 && now.Sub(state.lastUsed) > c.cookieTimer {
-			jar, err := cookiejar.New(nil)
+			jar, err := cookiejar.New(c.config.CookieOptions)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create new cookie jar: %v", err)
 			}
 			state.cookieJar = jar
 			state.client.Jar = jar

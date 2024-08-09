@@ -55,6 +55,7 @@ func main() {
             "http://proxy2.example.com:8080": {Username: "user2", Password: "pass2"},
         },
         CookieTimeout:  10 * time.Minute,
+        CookieOptions:  &cookiejar.Options{PublicSuffixList: publicsuffix.List},
         DialTimeout:    30 * time.Second,
         RequestTimeout: 1 * time.Minute,
         RetryAttempts:  3,
@@ -84,6 +85,7 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
 - `ProxyURLs`: List of proxy URLs to use
 - `ProxyAuth`: Map of proxy URLs to their respective authentication credentials
 - `CookieTimeout`: Duration for which cookies are valid
+- `CookieOptions`: Options for configuring the cookie jar (see `http.cookiejar.Options`)
 - `DialTimeout`: Timeout for establishing a connection to a proxy
 - `BackoffTime`: Time to wait before retrying a failed proxy
 - `RequestTimeout`: Timeout for the entire request (including dialing, writing request, and reading response)
