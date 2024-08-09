@@ -28,6 +28,6 @@ func TestDialTimeout(t *testing.T) {
 	duration := time.Since(start)
 
 	require.Error(t, err)
-	assert.True(t, duration >= 2*time.Second, "Expected timeout to be at least 2 seconds, got %v", duration)
-	assert.True(t, duration < 3*time.Second, "Expected timeout to be less than 3 seconds, got %v", duration)
+	assert.True(t, duration >= 1*time.Second, "Expected timeout to be at least 1 second, got %v", duration)
+	assert.True(t, duration < 2*time.Second, "Expected timeout to be less than 2 seconds, got %v", duration)
 }
