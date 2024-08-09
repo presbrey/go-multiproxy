@@ -363,3 +363,32 @@ func TestCookieTimeout(t *testing.T) {
 
 	assert.Equal(t, 3, client.states[0].requestCount)
 }
+
+func TestAllProxiesUnavailable(t *testing.T) {
+	testServer := setupTestServer()
+	defer testServer.Close()
+
+	// Use non-routable IPs to simulate unavailable proxies
+	config := Config{
+		ProxyURLs: []string{
+			"socks5://10.255.255.1:1080",
+			"socks5://10.255.255.2:1080",
+		},
+		DialTimeout:   1 * time.Second,
+		RetryAttempts: 1,
+		RetryDelay:    500 * time.Millisecond,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+
+	_, err = client.Get(testServer.URL)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "all proxy servers failed")
+
+	// Check that both proxies were attempted
+	assert.Equal(t, 1, client.states[0].requestCount)
+	assert.Equal(t, 1, client.states[0].failureCount)
+	assert.Equal(t, 1, client.states[1].requestCount)
+	assert.Equal(t, 1, client.states[1].failureCount)
+}
