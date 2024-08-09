@@ -393,3 +393,14 @@ func TestAllProxiesUnavailable(t *testing.T) {
 	assert.Equal(t, 2, client.states[1].requestCount)
 	assert.Equal(t, 2, client.states[1].failureCount)
 }
+
+func TestClientWithNoProxyURLs(t *testing.T) {
+	config := Config{
+		ProxyURLs: []string{},
+		DialTimeout: 5 * time.Second,
+	}
+
+	_, err := NewClient(config)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "at least one proxy URL is required")
+}
