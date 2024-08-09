@@ -1,6 +1,7 @@
 package multiproxy
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -14,9 +15,9 @@ func TestAllProxiesUnavailable(t *testing.T) {
 
 	// Use non-routable IPs to simulate unavailable proxies
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://10.255.255.1:1080",
-			"socks5://10.255.255.2:1080",
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: "10.255.255.1:1080"}},
+			{URL: &url.URL{Scheme: "socks5", Host: "10.255.255.2:1080"}},
 		},
 		DialTimeout:      1 * time.Second,
 		DefaultUserAgent: "DefaultUserAgent/1.0",
@@ -41,7 +42,9 @@ func TestAllProxiesUnavailable(t *testing.T) {
 
 func TestClientGetError(t *testing.T) {
 	config := Config{
-		ProxyURLs:   []string{"http://10.255.255.1:8080"},
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "http", Host: "10.255.255.1:8080"}},
+		},
 		DialTimeout: 5 * time.Second,
 	}
 
@@ -54,7 +57,9 @@ func TestClientGetError(t *testing.T) {
 
 func TestClientPostError(t *testing.T) {
 	config := Config{
-		ProxyURLs:   []string{"http://10.255.255.1:8080"},
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "http", Host: "10"}},
+		},
 		DialTimeout: 5 * time.Second,
 	}
 
@@ -67,7 +72,9 @@ func TestClientPostError(t *testing.T) {
 
 func TestClientHeadError(t *testing.T) {
 	config := Config{
-		ProxyURLs:   []string{"http://10.255.255.1:8080"},
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "http", Host: "10"}},
+		},
 		DialTimeout: 5 * time.Second,
 	}
 
@@ -78,26 +85,14 @@ func TestClientHeadError(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid control character")
 }
 
-func TestClientNewError(t *testing.T) {
-	config := Config{
-		ProxyURLs:   []string{"\000"},
-		DialTimeout: 5 * time.Second,
-	}
-
-	_, err := NewClient(config)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid control character")
-}
-
 func TestClientWithNoProxyURLs(t *testing.T) {
 	config := Config{
-		ProxyURLs:   []string{},
-		DialTimeout: 5 * time.Second,
+		Proxies: []Proxy{},
 	}
 
 	_, err := NewClient(config)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "at least one proxy URL is required")
+	assert.Contains(t, err.Error(), "at least one proxy is required")
 }
 
 func TestDialTimeout(t *testing.T) {
@@ -105,8 +100,8 @@ func TestDialTimeout(t *testing.T) {
 	nonRoutableIP := "10.255.255.1:8080"
 
 	config := Config{
-		ProxyURLs: []string{
-			"http://" + nonRoutableIP,
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "http", Host: nonRoutableIP}},
 		},
 		DialTimeout:    1 * time.Second,
 		RequestTimeout: 1 * time.Second,

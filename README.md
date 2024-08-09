@@ -46,20 +46,22 @@ import (
 
 func main() {
     config := multiproxy.Config{
-        ProxyURLs: []string{
-            "http://proxy1.example.com:8080",
-            "http://proxy2.example.com:8080",
+        Proxies: []multiproxy.Proxy{
+            {
+                URL:  mustParseURL("http://proxy1.example.com:8080"),
+                Auth: &multiproxy.ProxyAuth{Username: "user1", Password: "pass1"},
+            },
+            {
+                URL:  mustParseURL("http://proxy2.example.com:8080"),
+                Auth: &multiproxy.ProxyAuth{Username: "user2", Password: "pass2"},
+            },
         },
-        ProxyAuth: map[string]multiproxy.ProxyAuth{
-            "http://proxy1.example.com:8080": {Username: "user1", Password: "pass1"},
-            "http://proxy2.example.com:8080": {Username: "user2", Password: "pass2"},
-        },
-        CookieTimeout:  10 * time.Minute,
-        CookieOptions:  &cookiejar.Options{PublicSuffixList: publicsuffix.List},
-        DialTimeout:    30 * time.Second,
-        RequestTimeout: 1 * time.Minute,
-        RetryAttempts:  3,
-        RetryDelay:     5 * time.Second,
+        CookieTimeout:    10 * time.Minute,
+        CookieOptions:    &cookiejar.Options{PublicSuffixList: publicsuffix.List},
+        DialTimeout:      30 * time.Second,
+        RequestTimeout:   1 * time.Minute,
+        RetryAttempts:    3,
+        RetryDelay:       5 * time.Second,
         ProxyRotateCount: 10,
     }
 
@@ -82,10 +84,11 @@ func main() {
 
 The `Config` struct allows you to customize the behavior of the MultiProxy Client:
 
-- `ProxyURLs`: List of proxy URLs to use
-- `ProxyAuth`: Map of proxy URLs to their respective authentication credentials
+- `Proxies`: List of Proxy structs, each containing:
+  - `URL`: The URL of the proxy
+  - `Auth`: Pointer to ProxyAuth struct with Username and Password
+  - `UserAgent`: User-Agent string for this specific proxy
 - `ProxyRotateCount`: Number of requests after which to rotate to the next proxy
-- `ProxyUserAgents`: Map of proxy URLs to their respective User-Agent strings
 
 - `BackoffTime`: Time to wait before retrying a failed proxy
 - `DialTimeout`: Timeout for establishing a connection to a proxy

@@ -18,6 +18,12 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+type Proxy struct {
+	URL       *url.URL
+	Auth      *ProxyAuth
+	UserAgent string
+}
+
 type ProxyAuth struct {
 	Username string
 	Password string
@@ -25,10 +31,8 @@ type ProxyAuth struct {
 
 type Config struct {
 	// Proxy configuration
-	ProxyURLs        []string
-	ProxyAuth        map[string]ProxyAuth
+	Proxies          []Proxy
 	ProxyRotateCount int
-	ProxyUserAgents  map[string]string
 
 	// Timeouts and delays
 	BackoffTime    time.Duration
@@ -75,24 +79,22 @@ type Client struct {
 }
 
 func NewClient(config Config) (*Client, error) {
-	if len(config.ProxyURLs) == 0 {
-		return nil, errors.New("at least one proxy URL is required")
+	if len(config.Proxies) == 0 {
+		return nil, errors.New("at least one proxy is required")
 	}
 
 	c := &Client{
 		config:  config,
-		servers: make([]*url.URL, len(config.ProxyURLs)),
-		states:  make([]proxyState, len(config.ProxyURLs)),
+		servers: make([]*url.URL, len(config.Proxies)),
+		states:  make([]proxyState, len(config.Proxies)),
 	}
 
-	for i, proxyURL := range config.ProxyURLs {
-		serverURL, err := url.Parse(proxyURL)
-		if err != nil {
-			return nil, fmt.Errorf("invalid proxy URL %s: %v", proxyURL, err)
-		}
-		c.servers[i] = serverURL
+	for i, elt := range config.Proxies {
+		c.servers[i] = elt.URL
 
-		auth, hasAuth := c.config.ProxyAuth[serverURL.Host]
+		hasAuth := elt.Auth != nil &&
+			(elt.Auth.Username != "" ||
+				elt.Auth.Password != "")
 
 		var transport http.RoundTripper
 
@@ -103,17 +105,17 @@ func NewClient(config Config) (*Client, error) {
 			dialer.Timeout = c.config.DialTimeout
 		}
 
-		if serverURL.Scheme == "socks5" {
-			auth := &proxy.Auth{
-				User:     auth.Username,
-				Password: auth.Password,
+		if elt.URL.Scheme == "socks5" {
+			var auth *proxy.Auth
+			if hasAuth {
+				auth = &proxy.Auth{
+					User:     elt.Auth.Username,
+					Password: elt.Auth.Password,
+				}
 			}
-			if !hasAuth {
-				auth = nil
-			}
-			socksDialer, err := proxy.SOCKS5("tcp", serverURL.Host, auth, dialer)
+			socksDialer, err := proxy.SOCKS5("tcp", elt.URL.Host, auth, dialer)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create SOCKS5 dialer for %s: %v", serverURL.Host, err)
+				return nil, fmt.Errorf("failed to create SOCKS5 dialer for %s: %v", elt.URL.Host, err)
 			}
 			transport = &http.Transport{
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -125,7 +127,7 @@ func NewClient(config Config) (*Client, error) {
 			}
 		} else {
 			proxyURL := func(_ *http.Request) (*url.URL, error) {
-				return serverURL, nil
+				return elt.URL, nil
 			}
 			transport = &http.Transport{
 				Proxy:       proxyURL,
@@ -136,12 +138,12 @@ func NewClient(config Config) (*Client, error) {
 			}
 			if hasAuth {
 				transport.(*http.Transport).ProxyConnectHeader = http.Header{
-					"Proxy-Authorization": {basicAuth(auth.Username, auth.Password)},
+					"Proxy-Authorization": {basicAuth(elt.Auth.Username, elt.Auth.Password)},
 				}
 				// Also set it for non-CONNECT requests
 				transport.(*http.Transport).Proxy = func(req *http.Request) (*url.URL, error) {
-					req.Header.Set("Proxy-Authorization", basicAuth(auth.Username, auth.Password))
-					return serverURL, nil
+					req.Header.Set("Proxy-Authorization", basicAuth(elt.Auth.Username, elt.Auth.Password))
+					return elt.URL, nil
 				}
 			}
 		}
@@ -189,15 +191,15 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		}
 
 		// Apply rate limiting
-		if limit, ok := c.config.RateLimits[c.servers[idx].Host]; ok {
+		if limit, ok := c.config.RateLimits[c.config.Proxies[idx].URL.Host]; ok {
 			if now.Sub(state.lastRequestAt) < limit {
 				time.Sleep(limit - now.Sub(state.lastRequestAt))
 			}
 		}
 
 		// Set proxy-specific User-Agent if configured
-		if userAgent, ok := c.config.ProxyUserAgents[c.servers[idx].Host]; ok {
-			req.Header.Set("User-Agent", userAgent)
+		if c.config.Proxies[idx].UserAgent != "" {
+			req.Header.Set("User-Agent", c.config.Proxies[idx].UserAgent)
 		}
 
 		// Set request timeout

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -75,9 +76,9 @@ func TestRoundRobinSelection(t *testing.T) {
 	defer cleanup2()
 
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://" + proxy1,
-			"socks5://" + proxy2,
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: proxy1}},
+			{URL: &url.URL{Scheme: "socks5", Host: proxy2}},
 		},
 		DialTimeout:      5 * time.Second,
 		ProxyRotateCount: 1,
@@ -109,9 +110,9 @@ func TestBackoff(t *testing.T) {
 	invalidProxy := "127.0.0.1:1" // Invalid proxy to trigger backoff
 
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://" + proxy1,
-			"socks5://" + invalidProxy,
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: proxy1}},
+			{URL: &url.URL{Scheme: "socks5", Host: invalidProxy}},
 		},
 		DialTimeout:      2 * time.Second,
 		BackoffTime:      5 * time.Second,
@@ -149,13 +150,9 @@ func TestAuthentication(t *testing.T) {
 	defer cleanup2()
 
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://" + proxy1,
-			"socks5://" + proxy2,
-		},
-		ProxyAuth: map[string]ProxyAuth{
-			proxy1: {Username: "user1", Password: "pass1"},
-			proxy2: {Username: "user2", Password: "pass2"},
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: proxy1}, Auth: &ProxyAuth{Username: "user1", Password: "pass1"}},
+			{URL: &url.URL{Scheme: "socks5", Host: proxy2}, Auth: &ProxyAuth{Username: "user2", Password: "pass2"}},
 		},
 		DialTimeout:      5 * time.Second,
 		ProxyRotateCount: 1,
@@ -187,9 +184,9 @@ func TestRetryMechanism(t *testing.T) {
 	invalidProxy := "127.0.0.1:1" // Invalid proxy to trigger retry
 
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://" + invalidProxy,
-			"socks5://" + proxy1,
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: invalidProxy}},
+			{URL: &url.URL{Scheme: "socks5", Host: proxy1}},
 		},
 		RetryAttempts: 2,
 		RetryDelay:    time.Second,
@@ -226,11 +223,11 @@ func TestUserAgentOverride(t *testing.T) {
 	defer cleanup2()
 
 	config := Config{
-		ProxyURLs:        []string{"socks5://" + proxy1, "socks5://" + proxy2},
-		DefaultUserAgent: "DefaultUserAgent/1.0",
-		ProxyUserAgents: map[string]string{
-			proxy1: "CustomUserAgent/1.0",
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: proxy1}, UserAgent: "CustomUserAgent/1.0"},
+			{URL: &url.URL{Scheme: "socks5", Host: proxy2}},
 		},
+		DefaultUserAgent: "DefaultUserAgent/1.0",
 		DialTimeout:      5 * time.Second,
 		ProxyRotateCount: 1, // Ensure we switch proxies after each request
 	}
@@ -262,10 +259,13 @@ func TestRateLimiting(t *testing.T) {
 	proxy1, cleanup1 := setupSocks5Server(t, "", "")
 	defer cleanup1()
 
+	proxyURL := &url.URL{Scheme: "socks5", Host: proxy1}
 	config := Config{
-		ProxyURLs: []string{"socks5://" + proxy1},
+		Proxies: []Proxy{
+			{URL: proxyURL},
+		},
 		RateLimits: map[string]time.Duration{
-			proxy1: 1 * time.Second,
+			proxyURL.Host: 1 * time.Second,
 		},
 		DialTimeout: 5 * time.Second,
 	}
@@ -295,9 +295,9 @@ func TestProxyRotation(t *testing.T) {
 	defer cleanup2()
 
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://" + proxy1,
-			"socks5://" + proxy2,
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: proxy1}},
+			{URL: &url.URL{Scheme: "socks5", Host: proxy2}},
 		},
 		ProxyRotateCount: 2,
 		DialTimeout:      5 * time.Second,
@@ -337,8 +337,8 @@ func TestCookieTimeout(t *testing.T) {
 	defer cleanup()
 
 	config := Config{
-		ProxyURLs: []string{
-			"socks5://" + proxy,
+		Proxies: []Proxy{
+			{URL: &url.URL{Scheme: "socks5", Host: proxy}},
 		},
 		CookieTimeout: 2 * time.Second,
 		DialTimeout:   5 * time.Second,
@@ -385,7 +385,7 @@ func TestClientHead(t *testing.T) {
 	defer cleanup()
 
 	config := Config{
-		ProxyURLs:   []string{"socks5://" + proxy},
+		Proxies:     []Proxy{{URL: &url.URL{Scheme: "socks5", Host: proxy}}},
 		DialTimeout: 5 * time.Second,
 	}
 
@@ -425,7 +425,7 @@ func TestClientPost(t *testing.T) {
 	defer cleanup()
 
 	config := Config{
-		ProxyURLs:   []string{"socks5://" + proxy},
+		Proxies:     []Proxy{{URL: &url.URL{Scheme: "socks5", Host: proxy}}},
 		DialTimeout: 5 * time.Second,
 	}
 

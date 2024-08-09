@@ -149,11 +149,11 @@ func TestConnectProxyWithHTTPS(t *testing.T) {
 	}
 
 	config := Config{
-		ProxyURLs: []string{
-			proxyURL.String(),
-		},
-		ProxyAuth: map[string]ProxyAuth{
-			proxyURL.Host: {Username: "user", Password: "pass"},
+		Proxies: []Proxy{
+			{
+				URL:  proxyURL,
+				Auth: &ProxyAuth{Username: "user", Password: "pass"},
+			},
 		},
 		DialTimeout:        5 * time.Second,
 		InsecureSkipVerify: true,
