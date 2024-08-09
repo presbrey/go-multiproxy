@@ -1,5 +1,8 @@
 # MultiProxy Client for Go
 
+![Go Test](https://github.com/presbrey/go-multiproxy/workflows/Go%20Test/badge.svg)
+[![codecov](https://codecov.io/gh/presbrey/go-multiproxy/branch/main/graph/badge.svg)](https://codecov.io/gh/presbrey/go-multiproxy)
+
 ## Overview
 
 MultiProxy Client is a robust Go library designed to manage multiple HTTP/HTTPS proxies efficiently. It provides a fault-tolerant and load-balanced approach to making HTTP requests through a pool of proxies, with features like automatic retries, backoff mechanisms, and proxy rotation.
