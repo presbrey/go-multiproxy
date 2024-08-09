@@ -145,10 +145,7 @@ func NewClient(config Config) (*Client, error) {
 			}
 		}
 
-		jar, err := cookiejar.New(config.CookieOptions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create cookie jar: %v", err)
-		}
+		jar, _ := cookiejar.New(config.CookieOptions)
 
 		c.states[i] = proxyState{
 			client: &http.Client{
@@ -185,10 +182,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		}
 
 		if c.config.CookieTimeout > 0 && now.Sub(state.lastUsed) > c.config.CookieTimeout {
-			jar, err := cookiejar.New(c.config.CookieOptions)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create new cookie jar: %v", err)
-			}
+			jar, _ := cookiejar.New(c.config.CookieOptions)
 			state.cookieJar = jar
 			state.client.Jar = jar
 		}
