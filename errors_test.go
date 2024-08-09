@@ -39,6 +39,30 @@ func TestAllProxiesUnavailable(t *testing.T) {
 	assert.Equal(t, 2, client.states[1].failureCount)
 }
 
+func TestClientGetError(t *testing.T) {
+	config := Config{
+		ProxyURLs:   []string{"http://10.255.255.1:8080"},
+		DialTimeout: 5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+	_, err = client.Get("\000")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid control character")
+}
+
+func TestClientNewError(t *testing.T) {
+	config := Config{
+		ProxyURLs:   []string{"\000"},
+		DialTimeout: 5 * time.Second,
+	}
+
+	_, err := NewClient(config)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid control character")
+}
+
 func TestClientWithNoProxyURLs(t *testing.T) {
 	config := Config{
 		ProxyURLs:   []string{},
