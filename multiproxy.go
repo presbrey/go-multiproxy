@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -194,11 +195,9 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 			}
 		}
 
-		// Set User-Agent
+		// Set proxy-specific User-Agent if configured
 		if userAgent, ok := c.config.ProxyUserAgents[c.servers[idx].Host]; ok {
 			req.Header.Set("User-Agent", userAgent)
-		} else if c.config.DefaultUserAgent != "" {
-			req.Header.Set("User-Agent", c.config.DefaultUserAgent)
 		}
 
 		// Set request timeout
@@ -265,8 +264,22 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return resp, finalErr
 }
 
+func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set default User-Agent if configured
+	if c.config.DefaultUserAgent != "" {
+		req.Header.Set("User-Agent", c.config.DefaultUserAgent)
+	}
+
+	return req, nil
+}
+
 func (c *Client) Get(url string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
