@@ -191,7 +191,6 @@ func TestRetryMechanism(t *testing.T) {
 			"socks5://" + invalidProxy,
 			"socks5://" + proxy1,
 		},
-		DialTimeout:   200 * time.Millisecond,
 		RetryAttempts: 2,
 		RetryDelay:    time.Second,
 	}

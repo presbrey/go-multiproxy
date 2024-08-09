@@ -2,8 +2,10 @@ package multiproxy
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -26,17 +28,18 @@ type ProxyAuth struct {
 }
 
 type Config struct {
-	ProxyURLs        []string
-	ProxyAuth        map[string]ProxyAuth
-	CookieTimeout    time.Duration
-	DialTimeout      time.Duration
-	BackoffTime      time.Duration
-	RequestTimeout   time.Duration
-	RetryAttempts    int
-	RetryDelay       time.Duration
-	UserAgents       []string
-	RateLimits       map[string]time.Duration
-	ProxyRotateCount int
+	ProxyURLs          []string
+	ProxyAuth          map[string]ProxyAuth
+	CookieTimeout      time.Duration
+	DialTimeout        time.Duration
+	BackoffTime        time.Duration
+	RequestTimeout     time.Duration
+	RetryAttempts      int
+	RetryDelay         time.Duration
+	UserAgents         []string
+	RateLimits         map[string]time.Duration
+	ProxyRotateCount   int
+	InsecureSkipVerify bool
 }
 
 type proxyState struct {
@@ -51,11 +54,13 @@ type proxyState struct {
 }
 
 type Client struct {
+	states     []proxyState
+	currentIdx int
+	mu         sync.Mutex
+	sf         singleflight.Group
+
 	servers          []*url.URL
-	states           []proxyState
 	proxyAuth        map[string]ProxyAuth
-	currentIdx       int
-	mu               sync.Mutex
 	cookieTimer      time.Duration
 	dialTimeout      time.Duration
 	backoffTime      time.Duration
@@ -65,16 +70,11 @@ type Client struct {
 	userAgents       []string
 	rateLimits       map[string]time.Duration
 	proxyRotateCount int
-	sf               singleflight.Group
 }
 
 func NewClient(config Config) (*Client, error) {
 	if len(config.ProxyURLs) == 0 {
 		return nil, errors.New("at least one proxy URL is required")
-	}
-
-	if config.DialTimeout == 0 {
-		config.DialTimeout = 30 * time.Second
 	}
 
 	c := &Client{
@@ -95,13 +95,20 @@ func NewClient(config Config) (*Client, error) {
 	for i, proxyURL := range config.ProxyURLs {
 		serverURL, err := url.Parse(proxyURL)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid proxy URL %s: %v", proxyURL, err)
 		}
 		c.servers[i] = serverURL
 
 		auth, hasAuth := c.proxyAuth[serverURL.Host]
 
 		var transport http.RoundTripper
+
+		dialer := &net.Dialer{
+			KeepAlive: 30 * time.Second,
+		}
+		if c.dialTimeout > 0 {
+			dialer.Timeout = c.dialTimeout
+		}
 
 		if serverURL.Scheme == "socks5" {
 			auth := &proxy.Auth{
@@ -111,10 +118,16 @@ func NewClient(config Config) (*Client, error) {
 			if !hasAuth {
 				auth = nil
 			}
-			dialer, _ := proxy.SOCKS5("tcp", serverURL.Host, auth, proxy.Direct)
+			socksDialer, err := proxy.SOCKS5("tcp", serverURL.Host, auth, dialer)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create SOCKS5 dialer for %s: %v", serverURL.Host, err)
+			}
 			transport = &http.Transport{
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					return dialer.Dial(network, addr)
+					return socksDialer.(proxy.ContextDialer).DialContext(ctx, network, addr)
+				},
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: config.InsecureSkipVerify,
 				},
 			}
 		} else {
@@ -122,11 +135,20 @@ func NewClient(config Config) (*Client, error) {
 				return serverURL, nil
 			}
 			transport = &http.Transport{
-				Proxy: proxyURL,
+				Proxy:       proxyURL,
+				DialContext: dialer.DialContext,
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: config.InsecureSkipVerify,
+				},
 			}
 			if hasAuth {
 				transport.(*http.Transport).ProxyConnectHeader = http.Header{
 					"Proxy-Authorization": {basicAuth(auth.Username, auth.Password)},
+				}
+				// Also set it for non-CONNECT requests
+				transport.(*http.Transport).Proxy = func(req *http.Request) (*url.URL, error) {
+					req.Header.Set("Proxy-Authorization", basicAuth(auth.Username, auth.Password))
+					return serverURL, nil
 				}
 			}
 		}
@@ -159,6 +181,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 
 	startIdx := c.currentIdx
 	now := time.Now()
+
+	var lastErr error
 
 	for i := 0; i < len(c.states); i++ {
 		idx := (startIdx + i) % len(c.states)
@@ -194,8 +218,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 			ctx    context.Context
 			cancel context.CancelFunc
 		)
-		if c.requestTimeout > 0 {
-			ctx, cancel = context.WithTimeout(req.Context(), c.requestTimeout)
+		if c.dialTimeout > 0 || c.requestTimeout > 0 {
+			ctx, cancel = context.WithTimeout(req.Context(), c.dialTimeout+c.requestTimeout)
 		} else {
 			ctx, cancel = context.WithCancel(req.Context())
 		}
@@ -207,6 +231,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		state.requestCount++
 
 		if err != nil {
+			lastErr = err
 			state.failureCount += 1
 			if c.backoffTime > 0 {
 				state.backoffUntil = now.Add(c.backoffTime)
@@ -217,9 +242,6 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 
 		state.lastUsed = now
 
-		// always rotate proxy
-		// c.currentIdx = (idx + 1) % len(c.states)
-
 		// Rotate proxy if needed
 		if c.proxyRotateCount > 0 && state.requestCount%c.proxyRotateCount == 0 {
 			c.currentIdx = (c.currentIdx + 1) % len(c.states)
@@ -228,12 +250,15 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 
+	if lastErr != nil {
+		return nil, fmt.Errorf("all proxy servers failed, last error: %v", lastErr)
+	}
 	return nil, errors.New("all proxy servers are unavailable")
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	var resp *http.Response
-	var err error
+	var finalErr error
 
 	for attempt := 0; attempt <= c.retryAttempts; attempt++ {
 		v, err, _ := c.sf.Do(req.URL.String(), func() (interface{}, error) {
@@ -242,15 +267,17 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 		if err == nil {
 			resp = v.(*http.Response)
+			finalErr = nil
 			break
 		}
+		finalErr = err
 
 		if attempt < c.retryAttempts {
 			time.Sleep(c.retryDelay)
 		}
 	}
 
-	return resp, err
+	return resp, finalErr
 }
 
 func (c *Client) Get(url string) (*http.Response, error) {
