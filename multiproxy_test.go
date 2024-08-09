@@ -370,3 +370,75 @@ func TestCookieTimeout(t *testing.T) {
 
 	assert.Equal(t, 3, client.states[0].requestCount)
 }
+
+func TestClientHead(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "HEAD" {
+			t.Errorf("Expected HEAD request, got %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer testServer.Close()
+
+	proxy, cleanup := setupSocks5Server(t, "", "")
+	defer cleanup()
+
+	config := Config{
+		ProxyURLs:   []string{"socks5://" + proxy},
+		DialTimeout: 5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+
+	resp, err := client.Head(testServer.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "text/plain", resp.Header.Get("Content-Type"))
+	resp.Body.Close()
+
+	assert.Equal(t, 1, client.states[0].requestCount)
+}
+
+func TestClientPost(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "application/x-www-form-urlencoded" {
+			t.Errorf("Expected Content-Type application/x-www-form-urlencoded, got %s", contentType)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("Error reading body: %v", err)
+		}
+		if string(body) != "key=value" {
+			t.Errorf("Expected body 'key=value', got '%s'", string(body))
+		}
+		fmt.Fprint(w, "POST successful")
+	}))
+	defer testServer.Close()
+
+	proxy, cleanup := setupSocks5Server(t, "", "")
+	defer cleanup()
+
+	config := Config{
+		ProxyURLs:   []string{"socks5://" + proxy},
+		DialTimeout: 5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+
+	resp, err := client.Post(testServer.URL, "application/x-www-form-urlencoded", strings.NewReader("key=value"))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, "POST successful", string(body))
+	resp.Body.Close()
+
+	assert.Equal(t, 1, client.states[0].requestCount)
+}
