@@ -387,8 +387,9 @@ func TestAllProxiesUnavailable(t *testing.T) {
 	assert.Contains(t, err.Error(), "all proxy servers failed")
 
 	// Check that both proxies were attempted
-	assert.Equal(t, 1, client.states[0].requestCount)
-	assert.Equal(t, 1, client.states[0].failureCount)
-	assert.Equal(t, 1, client.states[1].requestCount)
-	assert.Equal(t, 1, client.states[1].failureCount)
+	// Each proxy should be attempted twice due to the retry
+	assert.Equal(t, 2, client.states[0].requestCount)
+	assert.Equal(t, 2, client.states[0].failureCount)
+	assert.Equal(t, 2, client.states[1].requestCount)
+	assert.Equal(t, 2, client.states[1].failureCount)
 }
