@@ -294,3 +294,11 @@ func (c *Client) Post(url, contentType string, body io.Reader) (*http.Response, 
 	req.Header.Set("Content-Type", contentType)
 	return c.Do(req)
 }
+
+func (c *Client) Head(url string) (*http.Response, error) {
+	req, err := c.NewRequest("HEAD", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
+}
