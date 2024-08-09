@@ -56,6 +56,7 @@ type Client struct {
 	mu         sync.Mutex
 	sf         singleflight.Group
 
+	config           Config
 	servers          []*url.URL
 	proxyAuth        map[string]ProxyAuth
 	cookieTimer      time.Duration
@@ -76,6 +77,7 @@ func NewClient(config Config) (*Client, error) {
 	}
 
 	c := &Client{
+		config:           config,
 		servers:          make([]*url.URL, len(config.ProxyURLs)),
 		states:           make([]proxyState, len(config.ProxyURLs)),
 		proxyAuth:        config.ProxyAuth,
