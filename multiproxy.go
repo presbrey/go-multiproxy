@@ -285,3 +285,12 @@ func (c *Client) Get(url string) (*http.Response, error) {
 	}
 	return c.Do(req)
 }
+
+func (c *Client) Post(url, contentType string, body io.Reader) (*http.Response, error) {
+	req, err := c.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", contentType)
+	return c.Do(req)
+}
