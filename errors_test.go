@@ -52,6 +52,32 @@ func TestClientGetError(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid control character")
 }
 
+func TestClientPostError(t *testing.T) {
+	config := Config{
+		ProxyURLs:   []string{"http://10.255.255.1:8080"},
+		DialTimeout: 5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+	_, err = client.Post("\000", "text/plain", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid control character")
+}
+
+func TestClientHeadError(t *testing.T) {
+	config := Config{
+		ProxyURLs:   []string{"http://10.255.255.1:8080"},
+		DialTimeout: 5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+	_, err = client.Head("\000")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid control character")
+}
+
 func TestClientNewError(t *testing.T) {
 	config := Config{
 		ProxyURLs:   []string{"\000"},
