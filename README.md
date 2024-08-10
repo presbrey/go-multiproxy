@@ -48,11 +48,11 @@ func main() {
     config := multiproxy.Config{
         Proxies: []multiproxy.Proxy{
             {
-                URL:  mustParseURL("http://proxy1.example.com:8080"),
+                URL:  &url.URL{Scheme: "http", Host: "proxy1.example.com:8080"},
                 Auth: &multiproxy.ProxyAuth{Username: "user1", Password: "pass1"},
             },
             {
-                URL:  mustParseURL("http://proxy2.example.com:8080"),
+                URL:  &url.URL{Scheme: "socks5", Host: "proxy2.example.com:1080"},
                 Auth: &multiproxy.ProxyAuth{Username: "user2", Password: "pass2"},
             },
         },
