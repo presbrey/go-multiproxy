@@ -107,8 +107,31 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
 - `RetryAttempts`: Number of times to retry a failed request
 - `RetryDelay`: Delay between retry attempts
 - `BackoffTime`: Time to wait before retrying a failed proxy
-- `ProxyRotateCount`: Number of requests after which to rotate to the next proxy
 - `InsecureSkipVerify`: Whether to skip TLS certificate verification
+
+## Using the RoundTripper
+
+The MultiProxy Client provides a `RoundTripper()` method that returns an `http.RoundTripper`. This allows you to use the multi-proxy functionality with any `http.Client`. Here's an example:
+
+```go
+config := multiproxy.Config{
+    // ... your config here ...
+}
+
+client, err := multiproxy.NewClient(config)
+if err != nil {
+    // handle error
+}
+
+httpClient := &http.Client{
+    Transport: client.RoundTripper(),
+}
+
+// Now use httpClient for your requests
+resp, err := httpClient.Get("https://example.com")
+```
+
+This is particularly useful when you need to use the multi-proxy functionality with libraries or APIs that accept an `http.Client`.
 
 ## Testing
 
