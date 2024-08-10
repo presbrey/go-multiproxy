@@ -305,3 +305,16 @@ func (c *Client) Head(url string) (*http.Response, error) {
 	}
 	return c.Do(req)
 }
+
+// RoundTripper returns an http.RoundTripper that uses the Client's proxies.
+func (c *Client) RoundTripper() http.RoundTripper {
+	return &clientRoundTripper{client: c}
+}
+
+type clientRoundTripper struct {
+	client *Client
+}
+
+func (rt *clientRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return rt.client.do(req)
+}
