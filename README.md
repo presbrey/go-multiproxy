@@ -91,6 +91,7 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
   - `URL`: The URL of the proxy
   - `Auth`: Pointer to ProxyAuth struct with Username and Password
   - `UserAgent`: User-Agent string for this specific proxy
+  - `RateLimit`: Duration for rate limiting requests to this specific proxy
 - `ProxyRotateCount`: Number of requests after which to rotate to the next proxy
 
 - `BackoffTime`: Time to wait before retrying a failed proxy
@@ -102,8 +103,6 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
 - `CookieTimeout`: Duration for which cookies are valid
 
 - `DefaultUserAgent`: Default User-Agent string to use if not specified in `ProxyUserAgents`
-
-- `RateLimit`: Duration for rate limiting requests to a specific proxy
 
 - `RetryAttempts`: Number of times to retry a failed request
 - `RetryDelay`: Delay between retry attempts
