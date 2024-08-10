@@ -262,10 +262,7 @@ func TestRateLimiting(t *testing.T) {
 	proxyURL := &url.URL{Scheme: "socks5", Host: proxy1}
 	config := Config{
 		Proxies: []Proxy{
-			{URL: proxyURL},
-		},
-		RateLimits: map[string]time.Duration{
-			proxyURL.Host: 1 * time.Second,
+			{URL: proxyURL, RateLimit: 1 * time.Second},
 		},
 		DialTimeout: 5 * time.Second,
 	}

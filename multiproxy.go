@@ -22,6 +22,7 @@ type Proxy struct {
 	URL       *url.URL
 	Auth      *ProxyAuth
 	UserAgent string
+	RateLimit time.Duration
 }
 
 type ProxyAuth struct {
@@ -46,9 +47,6 @@ type Config struct {
 
 	// User-Agent configuration
 	DefaultUserAgent string
-
-	// Rate limiting
-	RateLimits map[string]time.Duration
 
 	// Retry configuration
 	RetryAttempts int
@@ -191,7 +189,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		}
 
 		// Apply rate limiting
-		if limit, ok := c.config.RateLimits[c.config.Proxies[idx].URL.Host]; ok {
+		if limit := c.config.Proxies[idx].RateLimit; limit > 0 {
 			if now.Sub(state.lastRequestAt) < limit {
 				time.Sleep(limit - now.Sub(state.lastRequestAt))
 			}
