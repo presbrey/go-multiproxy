@@ -100,10 +100,12 @@ The `Config` struct allows you to customize the behavior of the MultiProxy Clien
 
 - `DefaultUserAgent`: Default User-Agent string to use if not specified in `ProxyUserAgents`
 
-- `RateLimits`: Map of proxy URLs to their respective rate limit durations
+- `RateLimit`: Duration for rate limiting requests to a specific proxy
 
 - `RetryAttempts`: Number of times to retry a failed request
-
+- `RetryDelay`: Delay between retry attempts
+- `BackoffTime`: Time to wait before retrying a failed proxy
+- `ProxyRotateCount`: Number of requests after which to rotate to the next proxy
 - `InsecureSkipVerify`: Whether to skip TLS certificate verification
 
 ## Testing
