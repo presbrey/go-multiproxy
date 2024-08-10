@@ -398,6 +398,40 @@ func TestClientHead(t *testing.T) {
 	assert.Equal(t, 1, client.states[0].requestCount)
 }
 
+func TestClientRoundTripper(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello from test server")
+	}))
+	defer testServer.Close()
+
+	proxy, cleanup := setupSocks5Server(t, "", "")
+	defer cleanup()
+
+	config := Config{
+		Proxies:     []Proxy{{URL: &url.URL{Scheme: "socks5", Host: proxy}}},
+		DialTimeout: 5 * time.Second,
+	}
+
+	client, err := NewClient(config)
+	require.NoError(t, err)
+
+	httpClient := &http.Client{
+		Transport: client.RoundTripper(),
+	}
+
+	resp, err := httpClient.Get(testServer.URL)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, "Hello from test server", string(body))
+
+	assert.Equal(t, 1, client.states[0].requestCount)
+}
+
 func TestClientPost(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
