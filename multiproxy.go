@@ -241,7 +241,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	v, err, _ := c.sf.Do(req.URL.String(), func() (interface{}, error) {
+	v, err, _ := c.sf.Do(req.URL.Host, func() (interface{}, error) {
 		var resp *http.Response
 		var finalErr error
 
