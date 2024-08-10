@@ -5,7 +5,7 @@
 
 ## Overview
 
-MultiProxy Client is a robust Go library designed to manage multiple HTTP/HTTPS proxies efficiently. It provides a fault-tolerant and load-balanced approach to making HTTP requests through a pool of proxies, with features like automatic retries, backoff mechanisms, and proxy rotation.
+MultiProxy Client is a robust Go library designed to manage multiple HTTP/HTTPS and SOCKS5 proxies efficiently. It provides a fault-tolerant and load-balanced approach to making HTTP requests through a pool of proxies, with features like automatic retries, backoff mechanisms, and proxy rotation.
 
 ## Features
 
