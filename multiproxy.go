@@ -241,27 +241,30 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	var resp *http.Response
-	var finalErr error
+	v, err, _ := c.sf.Do(req.URL.String(), func() (interface{}, error) {
+		var resp *http.Response
+		var finalErr error
 
-	for attempt := 0; attempt <= c.config.RetryAttempts; attempt++ {
-		v, err, _ := c.sf.Do(req.URL.String(), func() (interface{}, error) {
-			return c.do(req)
-		})
+		for attempt := 0; attempt <= c.config.RetryAttempts; attempt++ {
+			resp, finalErr = c.do(req)
 
-		if err == nil {
-			resp = v.(*http.Response)
-			finalErr = nil
-			break
+			if finalErr == nil {
+				return resp, nil
+			}
+
+			if attempt < c.config.RetryAttempts {
+				time.Sleep(c.config.RetryDelay)
+			}
 		}
-		finalErr = err
 
-		if attempt < c.config.RetryAttempts {
-			time.Sleep(c.config.RetryDelay)
-		}
+		return nil, finalErr
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	return resp, finalErr
+	return v.(*http.Response), nil
 }
 
 func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, error) {
