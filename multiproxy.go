@@ -76,6 +76,8 @@ type Client struct {
 	servers []*url.URL
 }
 
+// NewClient creates a new Client with the given configuration.
+// It returns an error if no proxies are provided in the configuration.
 func NewClient(config Config) (*Client, error) {
 	if len(config.Proxies) == 0 {
 		return nil, errors.New("at least one proxy is required")
@@ -240,6 +242,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("all proxy servers failed, last error: %v", lastErr)
 }
 
+// Do sends an HTTP request and returns an HTTP response, following policy
+// (such as redirects, cookies, auth) as configured on the client.
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	v, err, _ := c.sf.Do(req.URL.Host, func() (interface{}, error) {
 		var resp *http.Response
@@ -267,6 +271,8 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return v.(*http.Response), nil
 }
 
+// NewRequest creates a new http.Request with the provided method, URL, and optional body.
+// It sets the default User-Agent if configured.
 func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -281,6 +287,7 @@ func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, 
 	return req, nil
 }
 
+// Get issues a GET request to the specified URL.
 func (c *Client) Get(url string) (*http.Response, error) {
 	req, err := c.NewRequest("GET", url, nil)
 	if err != nil {
@@ -289,6 +296,7 @@ func (c *Client) Get(url string) (*http.Response, error) {
 	return c.Do(req)
 }
 
+// Post issues a POST request to the specified URL with the given content type and body.
 func (c *Client) Post(url, contentType string, body io.Reader) (*http.Response, error) {
 	req, err := c.NewRequest("POST", url, body)
 	if err != nil {
@@ -298,6 +306,7 @@ func (c *Client) Post(url, contentType string, body io.Reader) (*http.Response, 
 	return c.Do(req)
 }
 
+// Head issues a HEAD request to the specified URL.
 func (c *Client) Head(url string) (*http.Response, error) {
 	req, err := c.NewRequest("HEAD", url, nil)
 	if err != nil {
