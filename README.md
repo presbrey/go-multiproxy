@@ -1,7 +1,7 @@
 # MultiProxy Client for Go
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/presbrey/go-multiproxy)](https://goreportcard.com/report/github.com/presbrey/go-multiproxy)
-[![codecov](https://codecov.io/gh/presbrey/go-multiproxy/branch/main/graph/badge.svg)](https://codecov.io/gh/presbrey/go-multiproxy)
+[![codecov](https://codecov.io/gh/presbrey/go-multiproxy/graph/badge.svg?token=61C483BPUD)](https://codecov.io/gh/presbrey/go-multiproxy)
 ![Go Test](https://github.com/presbrey/go-multiproxy/workflows/Go%20Test/badge.svg)
 [![GoDoc](https://godoc.org/github.com/presbrey/go-multiproxy?status.svg)](https://godoc.org/github.com/presbrey/go-multiproxy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
