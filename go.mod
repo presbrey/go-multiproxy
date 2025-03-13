@@ -1,10 +1,11 @@
 module github.com/presbrey/go-multiproxy
 
 go 1.22.5
+toolchain go1.23.7
 
 require (
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.36.0
 	golang.org/x/sync v0.8.0
 )
 
